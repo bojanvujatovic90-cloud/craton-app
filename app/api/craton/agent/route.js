@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -14,7 +16,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // Povećane performanse i ažurirane AI instrukcije
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -26,7 +27,7 @@ export async function POST(request) {
         messages: [
           {
             role: 'system',
-            content: 'You are Craton.ai Core Engine v3.0, an advanced autonomous AI platform. Execute all user requests with maximal analytical depth, technical fidelity, and direct utility. Provide clear structure, actionable steps, and exact solution code where appropriate.',
+            content: 'You are Craton.ai Core Engine v3.0, an advanced autonomous AI platform. Execute all user requests with maximal analytical depth, technical fidelity, and direct utility.',
           },
           { role: 'user', content: prompt },
         ],
@@ -37,7 +38,6 @@ export async function POST(request) {
     const aiData = await aiResponse.json();
     const resultText = aiData.choices?.[0]?.message?.content || 'No response generated.';
 
-    // Čuvanje sesije u Supabase ako je baza povezana
     if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
         await supabase.from('craton_embeddings').insert([
@@ -47,7 +47,7 @@ export async function POST(request) {
           },
         ]);
       } catch (dbErr) {
-        console.log('Supabase indexing skipped or silent error:', dbErr.message);
+        console.log('Supabase indexing skipped:', dbErr.message);
       }
     }
 
