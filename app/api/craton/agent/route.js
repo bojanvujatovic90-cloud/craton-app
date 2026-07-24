@@ -11,11 +11,21 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // Poziv ka AI modelu
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    // Provera da li ključ uopšte postoji u Vercel varijablama
+    if (!apiKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'OPENAI_API_KEY nije pronađen u Vercel Environment Variables. Proverite podešavanja i uradite Redeploy.'
+      }, { status: 500 });
+    }
+
+    // Poziv ka OpenAI API-ju
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey.trim()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -32,9 +42,19 @@ export async function POST(request) {
     });
 
     const aiData = await aiResponse.json();
-    const resultText = aiData.choices?.[0]?.message?.content || 'No response generated.';
 
-    // Dinamički uvoz Supabase biblioteke samo ako postoje varijable na serveru
+    // Ako OpenAI vrati grešku (npr. pogrešan ključ, nema kredita, itd.)
+    if (!aiResponse.ok || aiData.error) {
+      const openAiError = aiData.error?.message || JSON.stringify(aiData);
+      return NextResponse.json({
+        success: false,
+        error: `OpenAI API Error: ${openAiError}`
+      }, { status: aiResponse.status || 500 });
+    }
+
+    const resultText = aiData.choices?.[0]?.message?.content || 'Odgovor je prazan.';
+
+    // Skladištenje u Supabase ako su podešene varijable
     if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
         const { createClient } = await import('@supabase/supabase-js');
