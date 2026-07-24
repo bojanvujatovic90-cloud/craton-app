@@ -2,12 +2,6 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
 
 export async function POST(request) {
   try {
@@ -17,6 +11,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
+    // Poziv ka AI modelu
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -39,8 +34,14 @@ export async function POST(request) {
     const aiData = await aiResponse.json();
     const resultText = aiData.choices?.[0]?.message?.content || 'No response generated.';
 
-    if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    // Dinamički uvoz Supabase biblioteke samo ako postoje varijable na serveru
+    if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
         await supabase.from('craton_embeddings').insert([
           {
             session_id: sessionId,
