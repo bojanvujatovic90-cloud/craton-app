@@ -3,27 +3,43 @@ export const fetchCache = 'force-no-store';
 
 import { NextResponse } from 'next/server';
 
-// --- SISTEMSKI ALATI ZA SUPERAGENTA ---
+// --- BESPLATNA PRETRAGA INTERNETA (DuckDuckGo API - bez registracije i bez API ključa) ---
 async function searchInternet(query) {
   try {
-    if (!process.env.SERPER_API_KEY) {
-      return `Serper API key not configured. Proceeding with internal knowledge base for: ${query}`;
-    }
-    const response = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
+    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
       headers: {
-        'X-API-KEY': process.env.SERPER_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ q: query }),
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+      }
     });
-    const data = await response.json();
-    if (data.organic) {
-      return JSON.stringify(data.organic.map(item => ({ title: item.title, snippet: item.snippet })));
+
+    if (!response.ok) {
+      return `Pretraga interneta za "${query}" nije uspela. Nastavljam sa internim znanju.`;
     }
-    return 'No direct web search results found.';
+
+    const htmlText = await response.text();
+    
+    // Izvačenje najvažnijih rezultata iz HTML odgovora
+    const snippets = [];
+    const regex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+    let match;
+    let count = 0;
+
+    while ((match = regex.exec(htmlText)) !== null && count < 5) {
+      const cleanSnippet = match[1].replace(/<[^>]+>/g, '').trim();
+      if (cleanSnippet) {
+        snippets.push(cleanSnippet);
+        count++;
+      }
+    }
+
+    if (snippets.length > 0) {
+      return JSON.stringify(snippets);
+    }
+
+    return `Pretraga je izvršena za "${query}", ali nisu pronađeni direktni rezultati.`;
   } catch (error) {
-    return `Web search execution error: ${error.message}`;
+    return `Greška pri pretrazi interneta: ${error.message}`;
   }
 }
 
@@ -41,11 +57,11 @@ const toolsDefinition = [
     type: 'function',
     function: {
       name: 'search_internet',
-      description: 'Executes real-time live internet search queries to collect grounding facts, market data, and latest technology developments.',
+      description: 'Izvršava pretragu interneta u realnom vremenu za dobijanje svežih informacija, vesti i podataka.',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'The precise web search query' },
+          query: { type: 'string', description: 'Precizan upit za pretragu interneta' },
         },
         required: ['query'],
       },
@@ -55,12 +71,12 @@ const toolsDefinition = [
     type: 'function',
     function: {
       name: 'execute_code',
-      description: 'Evaluates and verifies code snippets in a safe sandbox prior to returning to the user.',
+      description: 'Verifikuje i testira kôd u bezbednom okruženju pre slanja korisniku.',
       parameters: {
         type: 'object',
         properties: {
-          code: { type: 'string', description: 'The code snippet to evaluate' },
-          language: { type: 'string', description: 'Programming language (js, python, html, etc.)' },
+          code: { type: 'string', description: 'Kôd za verifikaciju' },
+          language: { type: 'string', description: 'Programski jezik (js, python, html, itd.)' },
         },
         required: ['code', 'language'],
       },
@@ -100,7 +116,6 @@ Respond in the language used in the prompt.`,
     let iterations = 0;
     const MAX_ITERATIONS = 6;
 
-    // Autonomni petlja ciklusa
     while (iterations < MAX_ITERATIONS) {
       iterations++;
 
@@ -128,15 +143,13 @@ Respond in the language used in the prompt.`,
       const responseMessage = aiData.choices[0].message;
       messages.push(responseMessage);
 
-      // Ako agent odluči da je završio zadatak
       if (responseMessage.content && !responseMessage.tool_calls) {
         finalResponse = responseMessage.content;
         break;
       }
 
-      // Ako agent odluči da aktivira spoljne alate
       if (responseMessage.tool_calls) {
-        thoughtProcess.push(`[Ciklus ${iterations}] Autonomno planiranje i izvršavanje alata...`);
+        thoughtProcess.push(`[Ciklus ${iterations}] Autonomno planiranje i pretraga...`);
 
         const toolPromises = responseMessage.tool_calls.map(async (toolCall) => {
           const fnName = toolCall.function.name;
@@ -170,7 +183,6 @@ Respond in the language used in the prompt.`,
       finalResponse = messages[messages.length - 1]?.content || "Autonomni ciklus je završen.";
     }
 
-    // Supabase evidencija
     if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
         const { createClient } = await import('@supabase/supabase-js');
