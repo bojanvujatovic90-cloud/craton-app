@@ -3,164 +3,87 @@ export const fetchCache = 'force-no-store';
 
 import { NextResponse } from 'next/server';
 
-// --- BESPLATNA PRETRAGA INTERNETA (DuckDuckGo HTML) ---
-async function searchInternet(query) {
-  try {
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-      }
-    });
-
-    if (!response.ok) return `Pretraga interneta nije uspela. Nastavljam sa internim znanjem.`;
-
-    const htmlText = await response.text();
-    const snippets = [];
-    const regex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
-    let match;
-    let count = 0;
-
-    while ((match = regex.exec(htmlText)) !== null && count < 5) {
-      const cleanSnippet = match[1].replace(/<[^>]+>/g, '').trim();
-      if (cleanSnippet) {
-        snippets.push(cleanSnippet);
-        count++;
-      }
-    }
-
-    return snippets.length > 0 ? JSON.stringify(snippets) : 'Nema direktnih rezultata pretrage.';
-  } catch (error) {
-    return `Greška pri pretrazi: ${error.message}`;
-  }
-}
-
-// Funkcija koja direktno pita Google koje modele tvoj ključ ima na raspolaganju
-async function getAvailableModel(apiKey) {
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    if (!res.ok) return null;
-    
-    const data = await res.json();
-    if (!data.models || !Array.isArray(data.models)) return null;
-
-    // Pronađi prvi model koji podržava generateContent
-    const validModel = data.models.find(m => 
-      m.supportedGenerationMethods?.includes('generateContent') &&
-      (m.name.includes('flash') || m.name.includes('pro'))
-    );
-
-    return validModel ? validModel.name : null; // vraća npr. "models/gemini-1.5-flash"
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request) {
   try {
     const { prompt, sessionId } = await request.json();
 
     if (!prompt) {
-      return NextResponse.json({ error: 'Prompt/Goal is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({
         success: false,
-        error: 'GEMINI_API_KEY nije pronađen u Vercel Environment Variables. Dodajte ključ i uradite Redeploy.'
+        error: 'GEMINI_API_KEY nije pronađen u Vercel Environment Variables.'
       }, { status: 500 });
     }
 
-    const cleanApiKey = apiKey.trim();
+    const cleanKey = apiKey.trim();
 
-    // Pretraga interneta ako upit zahteva sveže podatke
-    let searchContext = '';
-    if (prompt.toLowerCase().includes('traži') || prompt.toLowerCase().includes('vest') || prompt.toLowerCase().includes('istraži')) {
-      searchContext = await searchInternet(prompt);
+    // 1. Pitamo Google za tačnu listu dostupnih modela za tvoj ključ
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
+    const listData = await listRes.json();
+
+    if (!listRes.ok) {
+      return NextResponse.json({
+        success: false,
+        error: `Google API Ključ odbijen (${listRes.status}): ${listData.error?.message || 'Proverite da li je API ključ ispravan u AI Studio-u.'}`
+      }, { status: 500 });
     }
 
-    const systemInstruction = `Ti si Craton.ai Autonomous Superagent Engine v3.2 pokretan Gemini tehnologijom. Obraduj zahteve autonomno, analitički i pruži kompletna i precizna rešenja. Odgovaraj na jeziku na kom ti je postavljen upit.`;
+    const availableModels = listData.models || [];
+    const validModelObj = availableModels.find(m => 
+      m.supportedGenerationMethods?.includes('generateContent') &&
+      (m.name.includes('flash') || m.name.includes('pro'))
+    );
 
-    const fullPrompt = searchContext 
-      ? `Kontekst sa interneta: ${searchContext}\n\nKorisnički zahtev: ${prompt}` 
-      : prompt;
-
-    // 1. Otkrij koji je tačno model dostupan na tvom nalogu
-    let activeModelPath = await getAvailableModel(cleanApiKey);
-
-    // 2. Ako automatska detekcija zakaže, upotrebi listu rezervnih putanja
-    const candidateEndpoints = activeModelPath 
-      ? [`https://generativelanguage.googleapis.com/v1beta/${activeModelPath}:generateContent?key=${cleanApiKey}`]
-      : [
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${cleanApiKey}`,
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${cleanApiKey}`,
-          `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${cleanApiKey}`
-        ];
-
-    let responseText = null;
-    let lastError = null;
-
-    for (const apiUrl of candidateEndpoints) {
-      try {
-        const geminiRes = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            },
-            contents: [
-              {
-                parts: [{ text: fullPrompt }]
-              }
-            ]
-          })
-        });
-
-        const data = await geminiRes.json();
-
-        if (geminiRes.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          responseText = data.candidates[0].content.parts[0].text;
-          break;
-        } else {
-          lastError = data.error?.message || `HTTP ${geminiRes.status}`;
-        }
-      } catch (err) {
-        lastError = err.message;
-      }
+    if (!validModelObj) {
+      const modelNames = availableModels.map(m => m.name).join(', ');
+      return NextResponse.json({
+        success: false,
+        error: `Tvoj API ključ nema pristup nijednom Flash/Pro modelu. Dostupni modeli na tvom nalogu: [${modelNames || 'nijedan'}]`
+      }, { status: 500 });
     }
+
+    // 2. Pozivamo tačno onaj model koji je Google potvrdio da postoji na tvom nalogu
+    const targetModel = validModelObj.name; // npr. "models/gemini-1.5-flash"
+    const generateUrl = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${cleanKey}`;
+
+    const genRes = await fetch(generateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    const genData = await genRes.json();
+
+    if (!genRes.ok) {
+      return NextResponse.json({
+        success: false,
+        error: `Greška pri generisanju sa modelom ${targetModel}: ${genData.error?.message}`
+      }, { status: 500 });
+    }
+
+    const responseText = genData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!responseText) {
-      throw new Error(`Google API nije prihvatio zahtev. Razlog: ${lastError}`);
-    }
-
-    // Supabase evidencija (ako je aktivna)
-    if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
-        await supabase.from('craton_embeddings').insert([
-          { session_id: sessionId, content: `Goal: ${prompt} | Result: ${responseText}` },
-        ]);
-      } catch (dbErr) {
-        console.log('Supabase indexing skipped:', dbErr.message);
-      }
+      return NextResponse.json({
+        success: false,
+        error: 'Gemini je vratio prazan odgovor.'
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
       result: responseText,
-      thoughtProcess: searchContext ? ['Pretraga interneta uspešno izvršena...', 'Gemini generiše odgovor...'] : ['Gemini obrađuje upit...'],
-      engineVersion: 'v3.2-gemini-superagent',
+      usedModel: targetModel,
       live: true,
     });
 
   } catch (error) {
-    console.error("Gemini Agent Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
