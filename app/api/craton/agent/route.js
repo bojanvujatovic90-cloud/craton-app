@@ -35,6 +35,27 @@ async function searchInternet(query) {
   }
 }
 
+// Funkcija koja direktno pita Google koje modele tvoj ključ ima na raspolaganju
+async function getAvailableModel(apiKey) {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    if (!data.models || !Array.isArray(data.models)) return null;
+
+    // Pronađi prvi model koji podržava generateContent
+    const validModel = data.models.find(m => 
+      m.supportedGenerationMethods?.includes('generateContent') &&
+      (m.name.includes('flash') || m.name.includes('pro'))
+    );
+
+    return validModel ? validModel.name : null; // vraća npr. "models/gemini-1.5-flash"
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request) {
   try {
     const { prompt, sessionId } = await request.json();
@@ -51,6 +72,9 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
+    const cleanApiKey = apiKey.trim();
+
+    // Pretraga interneta ako upit zahteva sveže podatke
     let searchContext = '';
     if (prompt.toLowerCase().includes('traži') || prompt.toLowerCase().includes('vest') || prompt.toLowerCase().includes('istraži')) {
       searchContext = await searchInternet(prompt);
@@ -62,37 +86,53 @@ export async function POST(request) {
       ? `Kontekst sa interneta: ${searchContext}\n\nKorisnički zahtev: ${prompt}` 
       : prompt;
 
-    // Direct REST API Call ka Google v1beta API-ju bez SDK zavisnosti
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
+    // 1. Otkrij koji je tačno model dostupan na tvom nalogu
+    let activeModelPath = await getAvailableModel(cleanApiKey);
 
-    const geminiRes = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemInstruction }]
-        },
-        contents: [
-          {
-            parts: [{ text: fullPrompt }]
-          }
-        ]
-      })
-    });
+    // 2. Ako automatska detekcija zakaže, upotrebi listu rezervnih putanja
+    const candidateEndpoints = activeModelPath 
+      ? [`https://generativelanguage.googleapis.com/v1beta/${activeModelPath}:generateContent?key=${cleanApiKey}`]
+      : [
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${cleanApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${cleanApiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${cleanApiKey}`
+        ];
 
-    const data = await geminiRes.json();
+    let responseText = null;
+    let lastError = null;
 
-    if (!geminiRes.ok) {
-      console.error('Gemini REST Error details:', data);
-      throw new Error(data.error?.message || `Google API Error HTTP ${geminiRes.status}`);
+    for (const apiUrl of candidateEndpoints) {
+      try {
+        const geminiRes = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            },
+            contents: [
+              {
+                parts: [{ text: fullPrompt }]
+              }
+            ]
+          })
+        });
+
+        const data = await geminiRes.json();
+
+        if (geminiRes.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          responseText = data.candidates[0].content.parts[0].text;
+          break;
+        } else {
+          lastError = data.error?.message || `HTTP ${geminiRes.status}`;
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
     }
 
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
     if (!responseText) {
-      throw new Error('Google Gemini API je vratio prazan odgovor.');
+      throw new Error(`Google API nije prihvatio zahtev. Razlog: ${lastError}`);
     }
 
     // Supabase evidencija (ako je aktivna)
