@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // --- BESPLATNA PRETRAGA INTERNETA (DuckDuckGo HTML) ---
 async function searchInternet(query) {
@@ -36,26 +35,6 @@ async function searchInternet(query) {
   }
 }
 
-// Direktni REST fallback poziv ako SDK zakaže zbog v1beta URL ruta
-async function callGeminiRestApi(apiKey, modelName, systemInstruction, prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents: [{ parts: [{ text: prompt }] }]
-    })
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error?.message || `REST status ${response.status}`);
-  }
-
-  return data.candidates?.[0]?.content?.parts?.[0]?.text;
-}
-
 export async function POST(request) {
   try {
     const { prompt, sessionId } = await request.json();
@@ -77,48 +56,43 @@ export async function POST(request) {
       searchContext = await searchInternet(prompt);
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey.trim());
-    
-    // Zvanično važeće oznake modela
-    const availableModels = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-2.0-flash'];
-    let responseText = null;
-    let lastError = null;
-
     const systemInstruction = `Ti si Craton.ai Autonomous Superagent Engine v3.2 pokretan Gemini tehnologijom. Obraduj zahteve autonomno, analitički i pruži kompletna i precizna rešenja. Odgovaraj na jeziku na kom ti je postavljen upit.`;
 
     const fullPrompt = searchContext 
       ? `Kontekst sa interneta: ${searchContext}\n\nKorisnički zahtev: ${prompt}` 
       : prompt;
 
-    // Pokušaj preko SDK-a
-    for (const modelName of availableModels) {
-      try {
-        const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          systemInstruction: systemInstruction
-        });
+    // Direct REST API Call ka Google v1beta API-ju bez SDK zavisnosti
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
 
-        const result = await model.generateContent(fullPrompt);
-        const response = await result.response;
-        responseText = response.text();
+    const geminiRes = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents: [
+          {
+            parts: [{ text: fullPrompt }]
+          }
+        ]
+      })
+    });
 
-        if (responseText) break;
-      } catch (err) {
-        console.warn(`SDK za model ${modelName} nije uspeo, pokušavam REST fallback... Greška:`, err.message);
-        
-        // Ako SDK zakaže, pokušavamo direktan REST poziv
-        try {
-          responseText = await callGeminiRestApi(apiKey.trim(), modelName, systemInstruction, fullPrompt);
-          if (responseText) break;
-        } catch (restErr) {
-          console.warn(`REST fallback za model ${modelName} nije uspeo:`, restErr.message);
-          lastError = restErr;
-        }
-      }
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      console.error('Gemini REST Error details:', data);
+      throw new Error(data.error?.message || `Google API Error HTTP ${geminiRes.status}`);
     }
 
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
     if (!responseText) {
-      throw new Error(`Svi Gemini modeli su vratili grešku. Poslednja greška: ${lastError?.message}`);
+      throw new Error('Google Gemini API je vratio prazan odgovor.');
     }
 
     // Supabase evidencija (ako je aktivna)
