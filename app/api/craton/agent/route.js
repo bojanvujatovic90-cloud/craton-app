@@ -58,10 +58,12 @@ export async function POST(request) {
       searchContext = await searchInternet(prompt);
     }
 
-    // Inicijalizacija Google Gemini 1.5 Flash modela
+    // Inicijalizacija Google Gemini modela
     const genAI = new GoogleGenerativeAI(apiKey.trim());
+    
+    // Upotreba stabilne varijante modela
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       systemInstruction: `Ti si Craton.ai Autonomous Superagent Engine v3.2 pokretan Gemini tehnologijom.
 Obraduj zahteve autonomno, analitički i pruži kompletna i precizna rešenja.
 Odgovaraj na jeziku na kom ti je postavljen upit.`
@@ -93,7 +95,7 @@ Odgovaraj na jeziku na kom ti je postavljen upit.`
     return NextResponse.json({
       success: true,
       result: responseText,
-      thoughtProcess: searchContext ? ['Pretraga interneta uspešno izvršena...', 'Gemini 1.5 Flash generiše odgovor...'] : ['Gemini 1.5 Flash obrađuje upit...'],
+      thoughtProcess: searchContext ? ['Pretraga interneta uspešno izvršena...', 'Gemini generiše odgovor...'] : ['Gemini obrađuje upit...'],
       engineVersion: 'v3.2-gemini-superagent',
       live: true,
     });
