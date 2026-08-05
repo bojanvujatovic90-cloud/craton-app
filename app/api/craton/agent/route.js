@@ -52,31 +52,47 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // Pretraga interneta za svež kontekst ako upit to zahteva
+    // Pretraga interneta ako upit zahteva sveže podatke
     let searchContext = '';
     if (prompt.toLowerCase().includes('traži') || prompt.toLowerCase().includes('vest') || prompt.toLowerCase().includes('istraži')) {
       searchContext = await searchInternet(prompt);
     }
 
-    // Inicijalizacija Google Gemini modela
     const genAI = new GoogleGenerativeAI(apiKey.trim());
     
-    // Upotreba stabilne varijante modela
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash',
-      systemInstruction: `Ti si Craton.ai Autonomous Superagent Engine v3.2 pokretan Gemini tehnologijom.
-Obraduj zahteve autonomno, analitički i pruži kompletna i precizna rešenja.
-Odgovaraj na jeziku na kom ti je postavljen upit.`
-    });
+    // Lista podržanih modela po prioritetu
+    const availableModels = ['gemini-2.0-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
+    let responseText = null;
+    let lastError = null;
 
     const fullPrompt = searchContext 
       ? `Kontekst sa interneta: ${searchContext}\n\nKorisnički zahtev: ${prompt}` 
       : prompt;
 
-    const result = await model.generateContent(fullPrompt);
-    const responseText = result.response.text();
+    // Automatski fallback kroz modele
+    for (const modelName of availableModels) {
+      try {
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          systemInstruction: `Ti si Craton.ai Autonomous Superagent Engine v3.2 pokretan Gemini tehnologijom. Obraduj zahteve autonomno, analitički i pruži kompletna i precizna rešenja. Odgovaraj na jeziku na kom ti je postavljen upit.`
+        });
 
-    // Supabase evidencija (ako je podešena)
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        responseText = response.text();
+
+        if (responseText) break; // Uspešno generisan odgovor
+      } catch (err) {
+        console.warn(`Model ${modelName} nije uspeo, pokušavam sledeći... Greška:`, err.message);
+        lastError = err;
+      }
+    }
+
+    if (!responseText) {
+      throw new Error(`Svi Gemini modeli su vratili grešku. Poslednja greška: ${lastError?.message}`);
+    }
+
+    // Supabase evidencija (ako je aktivna)
     if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
         const { createClient } = await import('@supabase/supabase-js');
