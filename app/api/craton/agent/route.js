@@ -63,7 +63,7 @@ export async function POST(request) {
     
     // Upotreba stabilne varijante modela
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-2.0-flash',
       systemInstruction: `Ti si Craton.ai Autonomous Superagent Engine v3.2 pokretan Gemini tehnologijom.
 Obraduj zahteve autonomno, analitički i pruži kompletna i precizna rešenja.
 Odgovaraj na jeziku na kom ti je postavljen upit.`
