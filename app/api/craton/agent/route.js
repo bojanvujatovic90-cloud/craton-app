@@ -60,8 +60,8 @@ export async function POST(request) {
 
     const genAI = new GoogleGenerativeAI(apiKey.trim());
     
-    // Lista podržanih modela po prioritetu
-    const availableModels = ['gemini-2.0-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
+    // Lista važećih modela
+    const availableModels = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
     let responseText = null;
     let lastError = null;
 
@@ -69,7 +69,7 @@ export async function POST(request) {
       ? `Kontekst sa interneta: ${searchContext}\n\nKorisnički zahtev: ${prompt}` 
       : prompt;
 
-    // Automatski fallback kroz modele
+    // Automatski fallback
     for (const modelName of availableModels) {
       try {
         const model = genAI.getGenerativeModel({ 
@@ -81,7 +81,7 @@ export async function POST(request) {
         const response = await result.response;
         responseText = response.text();
 
-        if (responseText) break; // Uspešno generisan odgovor
+        if (responseText) break;
       } catch (err) {
         console.warn(`Model ${modelName} nije uspeo, pokušavam sledeći... Greška:`, err.message);
         lastError = err;
