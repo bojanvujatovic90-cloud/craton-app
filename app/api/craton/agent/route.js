@@ -57,14 +57,14 @@ export async function POST(request) {
     // Multilingual Search Keyword Detection (English + DE, FR, ES, ZH, JA, HI, HE)
     const lowerPrompt = prompt.toLowerCase();
     const searchKeywords = [
-      'search', 'latest', 'news', 'find', 'explore', // English
-      'suche', 'nachrichten', 'aktuell', // German (Deutsch)
-      'recherche', 'nouvelles', 'actualité', // French (Français)
-      'buscar', 'noticias', 'actualidad', // Spanish (Español)
-      '搜索', '新闻', '最新', // Chinese (Mandarin)
-      '検索', 'ニュース', '最新', // Japanese
-      'खोज', 'समाचार', 'नवीनतम', // Hindi
-      'חפש', 'חדשות', 'עדכני' // Hebrew
+      'search', 'latest', 'news', 'find', 'explore',
+      'suche', 'nachrichten', 'aktuell',
+      'recherche', 'nouvelles', 'actualité',
+      'buscar', 'noticias', 'actualidad',
+      '搜索', '新闻', '最新',
+      '検索', 'ニュース', '最新',
+      'खोज', 'समाचार', 'नवीनतम',
+      'חפש', 'חדשות', 'עדכני'
     ];
 
     const needsSearch = searchKeywords.some(kw => lowerPrompt.includes(kw));
