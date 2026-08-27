@@ -57,7 +57,7 @@ export async function POST(request) {
     // Multilingual Search Keyword Detection (English + DE, FR, ES, ZH, JA, HI, HE)
     const lowerPrompt = prompt.toLowerCase();
     const searchKeywords = [
-      'search', 'latest', 'news', 'find', 'explore',
+      'search', 'latest', 'news', 'find', 'explore', 'cena', 'price', 'gold', 'zlato',
       'suche', 'nachrichten', 'aktuell',
       'recherche', 'nouvelles', 'actualité',
       'buscar', 'noticias', 'actualidad',
@@ -75,7 +75,7 @@ export async function POST(request) {
     }
 
     // SYSTEM INSTRUCTION (German, French, Chinese, Spanish, Japanese, Hindi, Hebrew + English)
-    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.0 Ultra.
+    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.3.
 Your operational core supports multi-language processing with strict language auto-matching:
 
 TARGET LANGUAGES & BEHAVIOR:
@@ -89,17 +89,17 @@ TARGET LANGUAGES & BEHAVIOR:
 8. Hebrew (עברית): Provide direct, concise, well-formatted responses (RTL friendly).
 
 CRITICAL RULE:
-Detect the primary language of the user's input among the target languages listed above. You MUST respond ENTIRELY in that same language. Do NOT use Serbian under any circumstances. Always format output with clear Markdown structure, bold key details, and tables where applicable.`;
+Detect the primary language of the user's input among the target languages listed above or use the explicit language tag provided. You MUST respond ENTIRELY in that same language. Do NOT use Serbian unless explicitly requested. Always format output with clear Markdown structure, bold key details, and tables where applicable.`;
 
     const fullPrompt = searchContext 
       ? `Real-time Web Context: ${searchContext}\n\nUser Request: ${prompt}` 
       : prompt;
 
-    // Direct REST endpoints fallback
+    // Ažurirani endpointi sa podržanim modernim modelima
     const candidateEndpoints = [
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${cleanKey}`,
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${cleanKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${cleanKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`
     ];
 
     let responseText = null;
@@ -127,7 +127,7 @@ Detect the primary language of the user's input among the target languages liste
 
         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
           responseText = data.candidates[0].content.parts[0].text;
-          usedModel = url.includes('gemini-1.5-pro') ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+          usedModel = url.includes('pro') ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
           break;
         } else {
           lastError = data.error?.message || `HTTP ${res.status}`;
@@ -141,30 +141,14 @@ Detect the primary language of the user's input among the target languages liste
       throw new Error(`Google Gemini Engine error: ${lastError}`);
     }
 
-    // Supabase Embeddings Logging
-    if (sessionId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
-        await supabase.from('craton_embeddings').insert([
-          { session_id: sessionId, content: `Goal: ${prompt} | Result: ${responseText}` },
-        ]);
-      } catch (dbErr) {
-        console.log('Supabase indexing notice:', dbErr.message);
-      }
-    }
-
     return NextResponse.json({
       success: true,
       result: responseText,
       usedModel: usedModel,
       thoughtProcess: searchContext 
         ? ['Web search executed successfully...', 'Multilingual Gemini Engine processing...'] 
-        : ['Craton Engine v4.0 processing...'],
-      engineVersion: 'v4.0-gemini-multilingual-superagent',
+        : ['Craton Engine v4.3 processing...'],
+      engineVersion: 'v4.3-gemini-multilingual-superagent',
       supportedLanguages: ['en', 'de', 'fr', 'zh', 'es', 'ja', 'hi', 'he'],
       live: true,
     });
