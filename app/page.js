@@ -10,7 +10,6 @@ export default function Home() {
   const [usedModel, setUsedModel] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Funkcija za automatsko ubacivanje šablona na klik
   const handleFeatureClick = (featureKey, templateText) => {
     setSelectedFeature(featureKey);
     setPrompt(templateText);
@@ -49,7 +48,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans flex flex-col justify-between">
       <div className="w-full max-w-7xl mx-auto space-y-6 flex-grow">
         
-        {/* HEADER SA PAYPAL-OM I KARTICAMA */}
+        {/* HEADER */}
         <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Craton.ai Autonomous Engine</h1>
@@ -75,49 +74,49 @@ export default function Home() {
           </div>
         </div>
 
-        {/* SEKCIJA SA FUNKCIJAMA KOJE CRATON OBAVLJA (RAŠIRENO PO EKRANU) */}
+        {/* CAPABILITIES */}
         <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-4">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Craton Capabilities & Services (Izaberite uslugu):</label>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Craton Capabilities & Services (Select a service):</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <button
               type="button"
-              onClick={() => handleFeatureClick('financial', 'Proveri trenutnu cenu zlata (XAU/USD), berzanske trendove i ekonomske indikatore.')}
+              onClick={() => handleFeatureClick('financial', 'Check current gold price (XAU/USD), market trends, and key economic indicators.')}
               className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'financial' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
             >
               <span className="text-sm font-bold text-white mb-1">📈 Financial Tracker</span>
-              <span className="text-[11px] text-slate-400">Analiza zlata, akcija, kriptovaluta i berzanskih indekse u realnom vremenu.</span>
+              <span className="text-[11px] text-slate-400">Analysis of gold, stocks, crypto, and market indices in real time.</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleFeatureClick('copywriting', 'Napiši profesionalni marketinški tekst visoke konverzije i optimizovan sadržaj za globalnu publiku.')}
+              onClick={() => handleFeatureClick('copywriting', 'Write professional high-conversion marketing copy and optimized content for a global audience.')}
               className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'copywriting' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
             >
               <span className="text-sm font-bold text-white mb-1">✍️ Global Copywriting</span>
-              <span className="text-[11px] text-slate-400">Kreiranje marketinških kampanja, objava, mejlova i prodajnih tekstova.</span>
+              <span className="text-[11px] text-slate-400">Creation of marketing campaigns, posts, emails, and sales copy.</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleFeatureClick('summarizer', 'Izvuci ključne tačke, strukturirane podatke i sažetak za sledeći dokument/tekst: ')}
+              onClick={() => handleFeatureClick('summarizer', 'Extract key points, structured data, and summary for the following text: ')}
               className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'summarizer' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
             >
               <span className="text-sm font-bold text-white mb-1">📄 Smart Summarizer</span>
-              <span className="text-[11px] text-slate-400">Pametna analiza, izvlačenje suštine i strukturirani pregled dugačkih tekstova.</span>
+              <span className="text-[11px] text-slate-400">Smart analysis, core extraction, and structured overview of long texts.</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleFeatureClick('debugger', 'Analiziraj sledeći kod ili tehničku grešku, identifikuj uzrok i predloži rešenje: ')}
+              onClick={() => handleFeatureClick('debugger', 'Analyze the following code or technical error, identify the cause, and propose a solution: ')}
               className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'debugger' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
             >
               <span className="text-sm font-bold text-white mb-1">💻 Code & Tech Debugger</span>
-              <span className="text-[11px] text-slate-400">Rešavanje programskih grešaka, optimizacija koda i tehnička podrška.</span>
+              <span className="text-[11px] text-slate-400">Resolving code errors, code optimization, and technical support.</span>
             </button>
           </div>
         </div>
 
-        {/* GLAVNA FORMA (JEZIK + UNOS USLUGE/ZADATKA) */}
+        {/* MAIN FORM */}
         <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-6">
           <div className="w-full md:w-1/3">
             <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Select Language</label>
@@ -138,18 +137,18 @@ export default function Home() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Unesite kakvu uslugu ili zadatak želite od Cratona:</label>
+            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Enter the service or task you require from Craton:</label>
             <textarea
               rows="6"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Unesite vaš zahtev detaljno ili izaberite neku od ponuđenih funkcija iznad..."
+              placeholder="Enter your request in detail or select one of the features above..."
               className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-base text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-y shadow-inner leading-relaxed"
             />
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="text-xs text-slate-400">Aktivni režim: <strong className="text-blue-400 uppercase">{selectedFeature}</strong></span>
+            <span className="text-xs text-slate-400">Active Mode: <strong className="text-blue-400 uppercase">{selectedFeature}</strong></span>
             <button
               type="submit"
               disabled={loading}
@@ -160,7 +159,7 @@ export default function Home() {
           </div>
         </form>
 
-        {/* OUTPUT SEKCIJA PREKO CELOG EKRANA */}
+        {/* OUTPUT */}
         {(response || loading) && (
           <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
