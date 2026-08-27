@@ -75,7 +75,7 @@ export async function POST(request) {
     }
 
     // SYSTEM INSTRUCTION
-    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.4.
+    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.5.
 Your operational core supports multi-language processing with strict language auto-matching:
 
 TARGET LANGUAGES & BEHAVIOR:
@@ -95,10 +95,10 @@ Detect the primary language of the user's input among the target languages liste
       ? `Real-time Web Context: ${searchContext}\n\nUser Request: ${prompt}` 
       : prompt;
 
-    // Korišćenje stabilnih i podržanih modela (gemini-2.5-flash i gemini-2.5-pro)
+    // Ažurirani endpoint-i sa podržanim modelima poslednje generacije
     const candidateEndpoints = [
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${cleanKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${cleanKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`
     ];
 
     let responseText = null;
@@ -126,7 +126,7 @@ Detect the primary language of the user's input among the target languages liste
 
         if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
           responseText = data.candidates[0].content.parts[0].text;
-          usedModel = url.includes('pro') ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+          usedModel = url.includes('3.1-pro') ? 'gemini-3.1-pro-preview' : 'gemini-2.5-flash';
           break;
         } else {
           lastError = data.error?.message || `HTTP ${res.status}`;
@@ -146,8 +146,8 @@ Detect the primary language of the user's input among the target languages liste
       usedModel: usedModel,
       thoughtProcess: searchContext 
         ? ['Web search executed successfully...', 'Multilingual Gemini Engine processing...'] 
-        : ['Craton Engine v4.4 processing...'],
-      engineVersion: 'v4.4-gemini-multilingual-superagent',
+        : ['Craton Engine v4.5 processing...'],
+      engineVersion: 'v4.5-gemini-multilingual-superagent',
       supportedLanguages: ['en', 'de', 'fr', 'zh', 'es', 'ja', 'hi', 'he'],
       live: true,
     });
