@@ -2,15 +2,17 @@
 
 import { useState } from 'react';
 
-export default function CratonDashboard() {
+export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [language, setLanguage] = useState('en');
   const [response, setResponse] = useState('');
   const [usedModel, setUsedModel] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleExecute = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!prompt.trim()) return;
+
     setLoading(true);
     setResponse('');
     setUsedModel('');
@@ -19,61 +21,51 @@ export default function CratonDashboard() {
       const res = await fetch('/api/craton/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, language })
+        body: JSON.stringify({ prompt, language }),
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setResponse(data.result);
         setUsedModel(data.usedModel);
       } else {
-        setResponse(`Engine Error: ${data.error}`);
+        setResponse(data.error || 'Unknown error occurred.');
       }
     } catch (err) {
-      setResponse(`Network Error: ${err.message}`);
+      setResponse('Failed to connect to Craton Engine.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans flex flex-col items-center">
-      <div className="w-full max-w-4xl space-y-6">
+    <main style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#f8fafc', padding: '2rem 1rem', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
         
-        {/* HEADER & PAYPAL */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="space-y-1 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="h-2.5 w-2.5 bg-blue-500 rounded-full animate-pulse"></span>
-              <span className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Craton.ai Autonomous Superagent</span>
-            </div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">Engine Dashboard</h1>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827', padding: '1.5rem', borderRadius: '12px', border: '1px solid #1f2937', marginBottom: '1.5rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#ffffff' }}>Craton.ai Autonomous Engine</h1>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Multi-Language Superagent</p>
           </div>
-
-          <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center gap-4">
-            <div>
-              <p className="text-xs text-slate-400">Pro Access</p>
-              <p className="text-sm font-bold text-blue-400">$9.99<span className="text-xs text-slate-500">/mo</span></p>
-            </div>
-            <a 
-              href="https://www.paypal.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md"
-            >
-              PayPal / Cards
-            </a>
-          </div>
+          <a 
+            href="https://www.paypal.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ backgroundColor: '#2563eb', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', textDecoration: 'none', fontWeight: '600' }}
+          >
+            PayPal / Cards ($9.99/mo)
+          </a>
         </div>
 
-        {/* LANGUAGE SELECTOR & STATUS BAR */}
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="w-full sm:w-64">
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Language</label>
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ backgroundColor: '#111827', padding: '1.5rem', borderRadius: '12px', border: '1px solid #1f2937', marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#9ca3af', marginBottom: '0.5rem' }}>Select Language</label>
             <select 
               value={language} 
               onChange={(e) => setLanguage(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+              style={{ width: '100%', backgroundColor: '#030712', border: '1px solid #374151', borderRadius: '8px', padding: '0.75rem', color: '#fff', fontSize: '0.9rem' }}
             >
               <option value="en">English (EN)</option>
               <option value="de">Deutsch (DE)</option>
@@ -86,49 +78,35 @@ export default function CratonDashboard() {
             </select>
           </div>
 
-          <div className="text-xs text-slate-400 text-center sm:text-right">
-            Status: <span className="text-emerald-400 font-medium">Online & Ready</span>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#9ca3af', marginBottom: '0.5rem' }}>Prompt / Goal</label>
+            <textarea
+              rows="4"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Unesite vaš zadatak..."
+              style={{ width: '100%', backgroundColor: '#030712', border: '1px solid #374151', borderRadius: '8px', padding: '0.75rem', color: '#fff', fontSize: '0.9rem', resize: 'vertical' }}
+            />
           </div>
-        </div>
 
-        {/* INPUT SECTION */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
-          <textarea
-            rows="4"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Unesite vaš zadatak ili pitanje..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm leading-relaxed"
-          ></textarea>
-          
-          <div className="flex justify-end">
-            <button
-              onClick={handleExecute}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg disabled:opacity-50 text-sm"
-            >
-              {loading ? 'Processing...' : 'Execute'}
-            </button>
-          </div>
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem', width: '100%' }}
+          >
+            {loading ? 'Processing...' : 'Execute'}
+          </button>
+        </form>
 
-        {/* OUTPUT SECTION */}
+        {/* Output */}
         {(response || loading) && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Response Output</h3>
-              {usedModel && <span className="text-xs bg-blue-950 text-blue-400 border border-blue-800 px-2.5 py-1 rounded-md font-mono">Model: {usedModel}</span>}
+          <div style={{ backgroundColor: '#111827', padding: '1.5rem', borderRadius: '12px', border: '1px solid #1f2937' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #1f2937', paddingBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase' }}>Response Output</span>
+              {usedModel && <span style={{ fontSize: '0.75rem', backgroundColor: '#1e3a8a', color: '#93c5fd', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Model: {usedModel}</span>}
             </div>
-            
-            <div className="prose prose-invert max-w-none text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
-              {loading ? (
-                <div className="flex items-center gap-3 text-slate-400 py-4">
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  Processing request...
-                </div>
-              ) : (
-                response
-              )}
+            <div style={{ fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#e2e8f0' }}>
+              {loading ? 'Generisanje odgovora...' : response}
             </div>
           </div>
         )}
