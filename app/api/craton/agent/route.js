@@ -20,7 +20,6 @@ async function searchInternet(query) {
     const htmlText = await response.text();
     const snippets = [];
     
-    // Strategija 1: Ekstrakcija standardnih DuckDuckGo snippet klasa
     const regexSnippet = /<a[^>]*class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
     let match;
     while ((match = regexSnippet.exec(htmlText)) !== null && snippets.length < 6) {
@@ -28,7 +27,6 @@ async function searchInternet(query) {
       if (clean && !snippets.includes(clean)) snippets.push(clean);
     }
 
-    // Strategija 2: Alternativno izvlačenje tekstualnih blokova ako je struktura izmenjena
     if (snippets.length === 0) {
       const regexBody = /class="result__body">([\s\S]*?)<\/div>/g;
       while ((match = regexBody.exec(htmlText)) !== null && snippets.length < 6) {
@@ -47,7 +45,7 @@ async function searchInternet(query) {
 
 export async function POST(request) {
   try {
-    const { prompt, sessionId } = await request.json();
+    const { prompt, mode, language } = await request.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt/Goal is required' }, { status: 400 });
@@ -57,54 +55,54 @@ export async function POST(request) {
     if (!apiKey) {
       return NextResponse.json({
         success: false,
-        error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables. Please set the key and redeploy.'
+        error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables.'
       }, { status: 500 });
     }
 
     const cleanKey = apiKey.trim();
 
-    // Multilingual Search Keyword Detection
+    // Režimi rada i automatska detekcija potrebe za pretragom
     const lowerPrompt = prompt.toLowerCase();
-    const searchKeywords = [
-      'search', 'latest', 'news', 'find', 'explore', 'cena', 'price', 'gold', 'zlato',
-      'suche', 'nachrichten', 'aktuell',
-      'recherche', 'nouvelles', 'actualité',
-      'buscar', 'noticias', 'actualidad',
-      '搜索', '新闻', '最新',
-      '検索', 'ニュース', '最新',
-      'खोज', 'समाचार', 'नवीनतम',
-      'חפש', 'חדשות', 'עדכני'
-    ];
-
-    const needsSearch = searchKeywords.some(kw => lowerPrompt.includes(kw));
+    const needsSearch = mode === 'financial' || ['search', 'latest', 'news', 'cena', 'price', 'gold', 'zlato', 'bitcoin', 'crypto'].some(kw => lowerPrompt.includes(kw));
     let searchContext = '';
     
     if (needsSearch) {
       searchContext = await searchInternet(prompt);
     }
 
-    // SYSTEM INSTRUCTION
-    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.7.
-Your operational core supports multi-language processing with strict language auto-matching and real-time data synthesis:
+    // NAPREDNI SISTEMSKI PROMPT SA SPECIJALIZOVANIM MODOVIMA
+    let modeInstruction = '';
+    if (mode === 'financial') {
+      modeInstruction = 'SPECIALIZATION: Financial & Market Intelligence. Provide deep market analysis, pricing breakdowns, trend metrics, and risk factors in structured tables.';
+    } else if (mode === 'copywriting') {
+      modeInstruction = 'SPECIALIZATION: Global Copywriting & Content Generation. Create highly engaging, professional, conversion-optimized marketing or business copy.';
+    } else if (mode === 'summarizer') {
+      modeInstruction = 'SPECIALIZATION: Smart Data & Document Summarizer. Extract core insights, key takeaways, and build structured bullet-point summaries.';
+    } else if (mode === 'debugger') {
+      modeInstruction = 'SPECIALIZATION: Code & Tech Debugger. Analyze code snippets, identify root causes of bugs, provide clean corrected code, and optimization steps.';
+    } else {
+      modeInstruction = 'SPECIALIZATION: Autonomous General Superagent. Provide precise, expert-level technical and operational solutions.';
+    }
+
+    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v5.0.
+${modeInstruction}
 
 TARGET LANGUAGES & BEHAVIOR:
-1. English: Provide clear, authoritative, highly structured, and technical solutions.
-2. German (Deutsch): Provide direct, precise, structure-driven, and highly professional responses.
-3. French (Français): Provide articulate, elegant, clear, and comprehensive responses.
-4. Chinese (中文 - Standard Mandarin): Provide logical, dense, well-structured, and accurate technical responses.
-5. Spanish (Español): Provide dynamic, structured, engaging, and thorough answers.
-6. Japanese (日本語): Provide polite (Desu/Masu), precise, clear, and structured explanations.
-7. Hindi (हिन्दी): Provide clear, culturally accurate, structured, and helpful responses in Devanagari script.
-8. Hebrew (עברית): Provide direct, concise, well-formatted responses (RTL friendly).
+1. English: Provide authoritative, highly structured technical solutions.
+2. German (Deutsch): Provide direct, precise, professional responses.
+3. French (Français): Provide articulate, elegant, comprehensive responses.
+4. Chinese (中文): Provide logical, dense, structured technical responses.
+5. Spanish (Español): Provide dynamic, structured, thorough answers.
+6. Japanese (日本語): Provide polite, precise, structured explanations.
+7. Hindi (हिन्दी): Provide clear, culturally accurate responses in Devanagari script.
+8. Hebrew (עברית): Provide direct, concise responses (RTL friendly).
 
-CRITICAL RULE:
-Detect the primary language of the user's input among the target languages listed above or use the explicit language tag provided. You MUST respond ENTIRELY in that same language. Do NOT use Serbian unless explicitly requested. If real-time web context is provided, integrate it seamlessly into your response with exact data points. Always format output with clear Markdown structure, bold key details, and tables where applicable.`;
+CRITICAL RULE: Respond strictly in the selected language (${language || 'en'}) or match the user input language. Always use clear Markdown formatting, bold highlights, and data tables where applicable.`;
 
     const fullPrompt = searchContext 
       ? `Real-time Web Context Data:\n${searchContext}\n\nUser Request: ${prompt}` 
       : prompt;
 
-    // Aktuelni stabilni modeli poslednje generacije
     const candidateEndpoints = [
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${cleanKey}`,
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${cleanKey}`
@@ -120,14 +118,8 @@ Detect the primary language of the user's input among the target languages liste
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: systemInstruction }]
-            },
-            contents: [
-              {
-                parts: [{ text: fullPrompt }]
-              }
-            ]
+            system_instruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ parts: [{ text: fullPrompt }] }]
           })
         });
 
@@ -153,11 +145,7 @@ Detect the primary language of the user's input among the target languages liste
       success: true,
       result: responseText,
       usedModel: usedModel,
-      thoughtProcess: searchContext 
-        ? ['Enhanced web search executed successfully...', 'Multilingual Gemini Engine synthesis...'] 
-        : ['Craton Engine v4.7 processing...'],
-      engineVersion: 'v4.7-gemini-multilingual-superagent',
-      supportedLanguages: ['en', 'de', 'fr', 'zh', 'es', 'ja', 'hi', 'he'],
+      engineVersion: 'v5.0-craton-ultimate-suite',
       live: true,
     });
 
