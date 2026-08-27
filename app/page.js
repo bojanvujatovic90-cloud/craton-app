@@ -75,7 +75,7 @@ export default function Home() {
     const script = document.createElement("script");
     script.id = "paypal-sdk";
     // VAŽNO: Zamenite YOUR_PAYPAL_CLIENT_ID vašim pravim PayPal Client ID-jem sa PayPal Developer naloga
-    script.src = "https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD";
+    script.src = "https://www.paypal.com/sdk/js?client-id=AaNOLlsQaRtnD8oorI8_MNv0FAj7_WHWgEg9R8uJBIjTXFt0kT9SLDiDrArF5ElsDAsmJs7RVR3XxU9f&currency=USD";
     script.async = true;
 
     script.onload = () => {
