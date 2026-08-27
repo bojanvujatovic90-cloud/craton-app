@@ -4,13 +4,12 @@ import { useState } from 'react';
 
 export default function CratonDashboard() {
   const [prompt, setPrompt] = useState('');
-  const [mode, setMode] = useState('general');
   const [language, setLanguage] = useState('en');
   const [response, setResponse] = useState('');
   const [usedModel, setUsedModel] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleExecute = async (selectedMode = mode) => {
+  const handleExecute = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
     setResponse('');
@@ -20,7 +19,7 @@ export default function CratonDashboard() {
       const res = await fetch('/api/craton/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode: selectedMode, language })
+        body: JSON.stringify({ prompt, language })
       });
 
       const data = await res.json();
@@ -38,48 +37,43 @@ export default function CratonDashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 py-10 px-4 font-sans flex flex-col items-center">
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans flex flex-col items-center">
       <div className="w-full max-w-4xl space-y-6">
         
-        {/* HEADER & PAYPAL PRO ACCESS */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-6">
+        {/* HEADER & PAYPAL */}
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="space-y-1 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2">
               <span className="h-2.5 w-2.5 bg-blue-500 rounded-full animate-pulse"></span>
-              <span className="text-xs uppercase tracking-widest text-blue-400 font-semibold">Craton.ai v5.1 Autonomous Engine</span>
+              <span className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Craton.ai Autonomous Superagent</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Superagent Suite</h1>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">Engine Dashboard</h1>
           </div>
 
-          {/* PayPal Pro Subscription Card sa karticama */}
-          <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-6 w-full md:w-auto">
+          <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center gap-4">
             <div>
-              <p className="text-xs text-slate-400 font-medium">Pro Monthly Access</p>
-              <p className="text-lg font-extrabold text-blue-400">$9.99<span className="text-xs text-slate-500"> /mo</span></p>
+              <p className="text-xs text-slate-400">Pro Access</p>
+              <p className="text-sm font-bold text-blue-400">$9.99<span className="text-xs text-slate-500">/mo</span></p>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <a 
-                href="https://www.paypal.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-md text-center"
-              >
-                PayPal / Cards
-              </a>
-              <span className="text-[10px] text-slate-500 text-center">Supports Visa, MC, PayPal</span>
-            </div>
+            <a 
+              href="https://www.paypal.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md"
+            >
+              PayPal / Cards
+            </a>
           </div>
         </div>
 
-        {/* CONTROLS BAR: Language & Core Capabilities */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Language Selector */}
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-            <label className="block text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">Select Language</label>
+        {/* LANGUAGE SELECTOR & STATUS BAR */}
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="w-full sm:w-64">
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Language</label>
             <select 
               value={language} 
               onChange={(e) => setLanguage(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
             >
               <option value="en">English (EN)</option>
               <option value="de">Deutsch (DE)</option>
@@ -92,73 +86,45 @@ export default function CratonDashboard() {
             </select>
           </div>
 
-          {/* Core Capabilities Selector */}
-          <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-3">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Core Agent Capabilities</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button 
-                onClick={() => { setMode('financial'); setPrompt('Analiziraj trenutne berzanske trendove, cenu zlata i ključne finansijske indikatore.'); }}
-                className={`p-3 text-xs font-semibold rounded-xl border transition text-center ${mode === 'financial' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
-              >
-                📈 Financial
-              </button>
-              <button 
-                onClick={() => { setMode('copywriting'); setPrompt('Napiši profesionalni marketinški tekst visoke konverzije za lansiranje globalnog softvera.'); }}
-                className={`p-3 text-xs font-semibold rounded-xl border transition text-center ${mode === 'copywriting' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
-              >
-                ✍️ Copywriting
-              </button>
-              <button 
-                onClick={() => { setMode('summarizer'); setPrompt('Izvuci ključne tačke i napravi strukturirani sažetak za sledeći tekst: '); }}
-                className={`p-3 text-xs font-semibold rounded-xl border transition text-center ${mode === 'summarizer' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
-              >
-                📄 Summarizer
-              </button>
-              <button 
-                onClick={() => { setMode('debugger'); setPrompt('Analiziraj sledeći kod, identifikuj uzrok greške i predloži optimalno rešenje: '); }}
-                className={`p-3 text-xs font-semibold rounded-xl border transition text-center ${mode === 'debugger' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
-              >
-                💻 Debugger
-              </button>
-            </div>
+          <div className="text-xs text-slate-400 text-center sm:text-right">
+            Status: <span className="text-emerald-400 font-medium">Online & Ready</span>
           </div>
         </div>
 
-        {/* PROMPT INPUT SECTION */}
+        {/* INPUT SECTION */}
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
           <textarea
-            rows="5"
+            rows="4"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Unesite vaš zadatak, pitanje, kod ili tekst za obradu..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm leading-relaxed transition"
+            placeholder="Unesite vaš zadatak ili pitanje..."
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm leading-relaxed"
           ></textarea>
           
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="text-xs text-slate-400">Active Mode: <strong className="text-blue-400 uppercase tracking-wide">{mode}</strong></span>
+          <div className="flex justify-end">
             <button
-              onClick={() => handleExecute(mode)}
+              onClick={handleExecute}
               disabled={loading}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3 rounded-xl transition shadow-lg disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg disabled:opacity-50 text-sm"
             >
-              {loading ? 'Processing...' : 'Execute Superagent'}
+              {loading ? 'Processing...' : 'Execute'}
             </button>
           </div>
         </div>
 
-        {/* OUTPUT DISPLAY SECTION */}
+        {/* OUTPUT SECTION */}
         {(response || loading) && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-3 gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Superagent Response Output</h3>
-              {usedModel && <span className="text-xs bg-blue-950 text-blue-400 border border-blue-800/60 px-3 py-1 rounded-lg font-mono">Model: {usedModel}</span>}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-3">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Response Output</h3>
+              {usedModel && <span className="text-xs bg-blue-950 text-blue-400 border border-blue-800 px-2.5 py-1 rounded-md font-mono">Model: {usedModel}</span>}
             </div>
             
             <div className="prose prose-invert max-w-none text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
               {loading ? (
-                <div className="flex items-center gap-3 text-slate-400 py-6 justify-center">
-                  <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  Craton v5.1 is synthesizing data across nodes...
+                <div className="flex items-center gap-3 text-slate-400 py-4">
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                  Processing request...
                 </div>
               ) : (
                 response
