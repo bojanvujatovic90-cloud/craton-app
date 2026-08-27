@@ -4,34 +4,28 @@ import { useState, useRef, useEffect } from "react";
 
 const CRATON_FUNCTIONS = [
   {
-    id: "strategy",
-    title: "Autonomous Strategy & Planning",
-    description: "Analyze complex goals, break them down into multi-step execution plans.",
-    promptTemplate: "Create a detailed execution strategy for: "
-  },
-  {
-    id: "multilingual",
-    title: "Global Multilingual Processing",
-    description: "Translate, analyze, and generate professional output across 8 target languages.",
-    promptTemplate: "Analyze and translate the following concepts professionally: "
-  },
-  {
-    id: "websearch",
-    title: "Real-time Web Intelligence",
-    description: "Perform live searches and retrieve up-to-date data, news, and market insights.",
-    promptTemplate: "Search the latest news and updates regarding: "
-  },
-  {
-    id: "code",
-    title: "Technical & System Architecture",
-    description: "Design modular software architectures, API routes, and debug code seamlessly.",
-    promptTemplate: "Provide technical architecture and production code for: "
-  },
-  {
     id: "finance",
-    title: "Financial & Market Analysis",
-    description: "Evaluate macroeconomic trends, investment strategies, and trade structures.",
-    promptTemplate: "Provide a structured financial and risk analysis for: "
+    title: "📈 Financial & Crypto Live Tracker",
+    description: "Praćenje berze, zlata i kriptovaluta u realnom vremenu.",
+    promptTemplate: "Check current gold price (XAU/USD), market trends, crypto prices, and key economic indicators for: "
+  },
+  {
+    id: "copywriting",
+    title: "✍️ Multi-Language Content & Copywriting",
+    description: "Globalni generator marketinških i poslovnih tekstova.",
+    promptTemplate: "Write professional high-conversion marketing copy and optimized content for a global audience regarding: "
+  },
+  {
+    id: "summarizer",
+    title: "📄 Smart Document & Data Summarizer",
+    description: "Pametna analiza i strukturirano sažimanje teksta.",
+    promptTemplate: "Extract key points, structured data, and summary for the following text: "
+  },
+  {
+    id: "debugger",
+    title: "💻 Code & Tech Debugger",
+    description: "Asistent za rešavanje programskih grešaka i optimizaciju.",
+    promptTemplate: "Analyze the following code or technical error, identify the cause, and propose a solution: "
   }
 ];
 
@@ -74,8 +68,7 @@ export default function Home() {
 
     const script = document.createElement("script");
     script.id = "paypal-sdk";
-    // VAŽNO: Zamenite YOUR_PAYPAL_CLIENT_ID vašim pravim PayPal Client ID-jem sa PayPal Developer naloga
-    script.src = "https://www.paypal.com/sdk/js?client-id=AaNOLlsQaRtnD8oorI8_MNv0FAj7_WHWgEg9R8uJBIjTXFt0kT9SLDiDrArF5ElsDAsmJs7RVR3XxU9f&currency=USD";
+    script.src = "https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD";
     script.async = true;
 
     script.onload = () => {
@@ -85,7 +78,7 @@ export default function Home() {
             return actions.order.create({
               purchase_units: [{
                 amount: {
-                  value: '9.99', // Cena pretplate
+                  value: '9.99',
                 },
               }],
             });
@@ -358,7 +351,7 @@ const styles = {
   },
   functionGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gridTemplateColumns: "repeat(4, 1fr)",
     gap: "6px",
   },
   functionCard: {
