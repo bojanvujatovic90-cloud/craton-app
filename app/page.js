@@ -48,33 +48,34 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans flex flex-col justify-between">
       <div className="w-full max-w-7xl mx-auto space-y-6 flex-grow">
         
-        {/* HEADER */}
+        {/* HEADER SA ODVOJENIM DUGMETOM ZA PAYPAL I KARTICE */}
         <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Craton.ai Autonomous Engine</h1>
             <p className="text-sm text-slate-400 mt-1">Professional Multi-Language Superagent Workspace</p>
           </div>
           
-          <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-            <div>
-              <p className="text-xs text-slate-400 font-medium">Pro Monthly Subscription</p>
-              <p className="text-lg font-bold text-blue-400">$9.99<span className="text-xs text-slate-500"> /mo</span></p>
-            </div>
-            <div className="flex flex-col gap-1">
-              <a 
-                href="https://www.paypal.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-md text-center block"
-              >
-                PayPal / Credit Cards
-              </a>
-              <span className="text-[10px] text-slate-500 text-center">Visa, Master, Amex, PayPal</span>
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <a 
+              href="https://www.paypal.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2"
+            >
+              <span>🅿️</span> PayPal ($9.99/mo)
+            </a>
+            <a 
+              href="https://www.stripe.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2"
+            >
+              <span>💳</span> Credit Cards ($9.99/mo)
+            </a>
           </div>
         </div>
 
-        {/* CAPABILITIES */}
+        {/* CAPABILITIES / FUNKCIJE CRATONA */}
         <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-4">
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Craton Capabilities & Services (Select a service):</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
