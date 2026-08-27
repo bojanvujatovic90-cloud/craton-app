@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// Definisane funkcije koje Craton obavlja
 const CRATON_FUNCTIONS = [
   {
     id: "strategy",
@@ -51,13 +50,14 @@ export default function Home() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "Welcome to Craton.ai Autonomous Superagent Engine v4.1. Select a function from the grid below or type your custom goal.",
+      content: "Welcome to Craton.ai Autonomous Superagent Engine v4.2. Select a core function above, choose your language, or complete payment via PayPal.",
     },
   ]);
   const [input, setInput] = useState("");
   const [selectedLang, setSelectedLang] = useState("en");
   const [loading, setLoading] = useState(false);
   const [usedModel, setUsedModel] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
   const chatEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -67,6 +67,43 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
+
+  // Dinamičko učitavanje PayPal SDK skripte i renderovanje dugmeta
+  useEffect(() => {
+    if (document.getElementById("paypal-sdk")) return;
+
+    const script = document.createElement("script");
+    script.id = "paypal-sdk";
+    // VAŽNO: Zamenite YOUR_PAYPAL_CLIENT_ID vašim pravim PayPal Client ID-jem sa PayPal Developer naloga
+    script.src = "https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD";
+    script.async = true;
+
+    script.onload = () => {
+      if (window.paypal) {
+        window.paypal.Buttons({
+          createOrder: (data, actions) => {
+            return actions.order.create({
+              purchase_units: [{
+                amount: {
+                  value: '9.99', // Cena pretplate
+                },
+              }],
+            });
+          },
+          onApprove: (data, actions) => {
+            return actions.order.capture().then((details) => {
+              setPaymentStatus(`Uspešna uplata! Hvala, ${details.payer.name.given_name}. Pristup je omogućen.`);
+            });
+          },
+          onError: (err) => {
+            setPaymentStatus("Greška prilikom uplate. Pokušajte ponovo.");
+          }
+        }).render('#paypal-button-container');
+      }
+    };
+
+    document.body.appendChild(script);
+  }, []);
 
   const handleFunctionClick = (func) => {
     setInput(func.promptTemplate);
@@ -131,7 +168,7 @@ export default function Home() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.topBar}>
-          <div style={styles.badge}>v4.1 Ultra Engine</div>
+          <div style={styles.badge}>v4.2 Ultra Engine + PayPal</div>
           
           {/* Language Selector */}
           <div style={styles.langSelectorWrapper}>
@@ -151,23 +188,34 @@ export default function Home() {
         </div>
 
         <h1 style={styles.title}>Craton.AI Superagent</h1>
-        <p style={styles.subtitle}>Autonomous Intelligence & Multi-Function Engine</p>
+        <p style={styles.subtitle}>Autonomous Intelligence & Secure PayPal Monetization</p>
       </header>
 
-      {/* Function Menu Grid */}
-      <div style={styles.functionGridContainer}>
-        <div style={styles.gridTitle}>Available Core Functions:</div>
-        <div style={styles.functionGrid}>
-          {CRATON_FUNCTIONS.map((func) => (
-            <div 
-              key={func.id} 
-              style={styles.functionCard}
-              onClick={() => handleFunctionClick(func)}
-            >
-              <div style={styles.cardTitle}>{func.title}</div>
-              <div style={styles.cardDesc}>{func.description}</div>
-            </div>
-          ))}
+      {/* Main Layout Grid (Functions & Billing) */}
+      <div style={styles.mainLayout}>
+        {/* Function Menu Grid */}
+        <div style={styles.functionSection}>
+          <div style={styles.sectionTitle}>Available Core Functions:</div>
+          <div style={styles.functionGrid}>
+            {CRATON_FUNCTIONS.map((func) => (
+              <div 
+                key={func.id} 
+                style={styles.functionCard}
+                onClick={() => handleFunctionClick(func)}
+              >
+                <div style={styles.cardTitle}>{func.title}</div>
+                <div style={styles.cardDesc}>{func.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* PayPal Billing Box */}
+        <div style={styles.billingCard}>
+          <div style={styles.sectionTitle}>Pro Access ($9.99/mo)</div>
+          <p style={styles.billingDesc}>Pay securely via PayPal to unlock full superagent processing.</p>
+          <div id="paypal-button-container"></div>
+          {paymentStatus && <div style={styles.paymentStatus}>{paymentStatus}</div>}
         </div>
       </div>
 
@@ -219,7 +267,7 @@ export default function Home() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Select a function above or type your prompt..."
+            placeholder="Select a function above, choose language, or type your prompt..."
             style={styles.input}
             disabled={loading}
           />
@@ -242,7 +290,7 @@ const styles = {
     fontFamily: "system-ui, -apple-system, sans-serif",
   },
   header: {
-    padding: "16px 20px",
+    padding: "14px 20px",
     borderBottom: "1px solid #334155",
     backgroundColor: "#1e293b",
   },
@@ -250,7 +298,7 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "8px",
+    marginBottom: "6px",
   },
   badge: {
     padding: "4px 10px",
@@ -266,64 +314,90 @@ const styles = {
     gap: "8px",
   },
   langLabel: {
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#94a3b8",
   },
   select: {
-    padding: "6px 10px",
+    padding: "4px 8px",
     borderRadius: "6px",
     border: "1px solid #475569",
     backgroundColor: "#0f172a",
     color: "#fff",
-    fontSize: "13px",
+    fontSize: "12px",
     outline: "none",
     cursor: "pointer",
   },
   title: {
     margin: "0",
-    fontSize: "22px",
+    fontSize: "20px",
     fontWeight: "700",
   },
   subtitle: {
     margin: "2px 0 0 0",
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#94a3b8",
   },
-  functionGridContainer: {
+  mainLayout: {
+    display: "grid",
+    gridTemplateColumns: "1fr 280px",
+    gap: "12px",
     padding: "12px 20px",
     backgroundColor: "#111827",
     borderBottom: "1px solid #334155",
   },
-  gridTitle: {
-    fontSize: "12px",
+  functionSection: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  sectionTitle: {
+    fontSize: "11px",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
     color: "#94a3b8",
-    marginBottom: "8px",
+    marginBottom: "6px",
   },
   functionGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: "8px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: "6px",
   },
   functionCard: {
-    padding: "10px 12px",
+    padding: "8px 10px",
     backgroundColor: "#1e293b",
     border: "1px solid #334155",
-    borderRadius: "8px",
+    borderRadius: "6px",
     cursor: "pointer",
     transition: "all 0.2s ease",
   },
   cardTitle: {
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: "600",
     color: "#38bdf8",
-    marginBottom: "4px",
+    marginBottom: "2px",
   },
   cardDesc: {
+    fontSize: "10px",
+    color: "#94a3b8",
+    lineHeight: "1.2",
+  },
+  billingCard: {
+    backgroundColor: "#1e293b",
+    border: "1px solid #334155",
+    borderRadius: "6px",
+    padding: "10px 14px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
+  billingDesc: {
     fontSize: "11px",
     color: "#94a3b8",
-    lineHeight: "1.3",
+    margin: "4px 0 8px 0",
+  },
+  paymentStatus: {
+    marginTop: "6px",
+    fontSize: "11px",
+    color: "#34d399",
   },
   chatWindow: {
     flex: 1,
