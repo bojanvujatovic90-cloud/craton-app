@@ -1,190 +1,472 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from "react";
+
+const CRATON_FUNCTIONS = [
+  {
+    id: "strategy",
+    title: "Autonomous Strategy & Planning",
+    description: "Analyze complex goals, break them down into multi-step execution plans.",
+    promptTemplate: "Create a detailed execution strategy for: "
+  },
+  {
+    id: "multilingual",
+    title: "Global Multilingual Processing",
+    description: "Translate, analyze, and generate professional output across 8 target languages.",
+    promptTemplate: "Analyze and translate the following concepts professionally: "
+  },
+  {
+    id: "websearch",
+    title: "Real-time Web Intelligence",
+    description: "Perform live searches and retrieve up-to-date data, news, and market insights.",
+    promptTemplate: "Search the latest news and updates regarding: "
+  },
+  {
+    id: "code",
+    title: "Technical & System Architecture",
+    description: "Design modular software architectures, API routes, and debug code seamlessly.",
+    promptTemplate: "Provide technical architecture and production code for: "
+  },
+  {
+    id: "finance",
+    title: "Financial & Market Analysis",
+    description: "Evaluate macroeconomic trends, investment strategies, and trade structures.",
+    promptTemplate: "Provide a structured financial and risk analysis for: "
+  }
+];
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "de", label: "Deutsch" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+  { code: "zh", label: "中文" },
+  { code: "ja", label: "日本語" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "he", label: "עברית" }
+];
 
 export default function Home() {
-  const [prompt, setPrompt] = useState('');
-  const [language, setLanguage] = useState('en');
-  const [selectedFeature, setSelectedFeature] = useState('general');
-  const [response, setResponse] = useState('');
-  const [usedModel, setUsedModel] = useState('');
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: "Welcome to Craton.ai Autonomous Superagent Engine v4.2. Select a core function above, choose your language, or complete payment via PayPal.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [selectedLang, setSelectedLang] = useState("en");
   const [loading, setLoading] = useState(false);
+  const [usedModel, setUsedModel] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const chatEndRef = useRef(null);
 
-  const handleFeatureClick = (featureKey, templateText) => {
-    setSelectedFeature(featureKey);
-    setPrompt(templateText);
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!prompt.trim()) return;
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
 
+  // Dinamičko učitavanje PayPal SDK skripte i renderovanje dugmeta
+  useEffect(() => {
+    if (document.getElementById("paypal-sdk")) return;
+
+    const script = document.createElement("script");
+    script.id = "paypal-sdk";
+    // VAŽNO: Zamenite YOUR_PAYPAL_CLIENT_ID vašim pravim PayPal Client ID-jem sa PayPal Developer naloga
+    script.src = "https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD";
+    script.async = true;
+
+    script.onload = () => {
+      if (window.paypal) {
+        window.paypal.Buttons({
+          createOrder: (data, actions) => {
+            return actions.order.create({
+              purchase_units: [{
+                amount: {
+                  value: '9.99', // Cena pretplate
+                },
+              }],
+            });
+          },
+          onApprove: (data, actions) => {
+            return actions.order.capture().then((details) => {
+              setPaymentStatus(`Uspešna uplata! Hvala, ${details.payer.name.given_name}. Pristup je omogućen.`);
+            });
+          },
+          onError: (err) => {
+            setPaymentStatus("Greška prilikom uplate. Pokušajte ponovo.");
+          }
+        }).render('#paypal-button-container');
+      }
+    };
+
+    document.body.appendChild(script);
+  }, []);
+
+  const handleFunctionClick = (func) => {
+    setInput(func.promptTemplate);
+  };
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userQuery = `[Language: ${selectedLang.toUpperCase()}] ${input.trim()}`;
+    const displayQuery = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: displayQuery }]);
     setLoading(true);
-    setResponse('');
-    setUsedModel('');
 
     try {
-      const res = await fetch('/api/craton/agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, language, mode: selectedFeature }),
+      const response = await fetch("/api/craton/agent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: userQuery,
+          sessionId: "craton-session-v4",
+        }),
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setResponse(data.result);
-        setUsedModel(data.usedModel);
+      const data = await response.json();
+
+      if (data.success) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.result },
+        ]);
+        if (data.usedModel) {
+          setUsedModel(data.usedModel);
+        }
       } else {
-        setResponse(data.error || 'Unknown error occurred.');
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Engine Error: ${data.error || "Failed to process request."}`,
+          },
+        ]);
       }
     } catch (err) {
-      setResponse('Failed to connect to Craton Engine.');
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Network Connection Error: ${err.message}`,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans flex flex-col justify-between">
-      <div className="w-full max-w-7xl mx-auto space-y-6 flex-grow">
-        
-        {/* HEADER SA PAYPAL I KARTICAMA U DESNOM UGLU */}
-        <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Craton.ai Autonomous Engine</h1>
-            <p className="text-sm text-slate-400 mt-1">Professional Multi-Language Superagent Workspace</p>
-          </div>
+    <div style={styles.container}>
+      {/* Header */}
+      <header style={styles.header}>
+        <div style={styles.topBar}>
+          <div style={styles.badge}>v4.2 Ultra Engine + PayPal</div>
           
-          <div className="flex flex-wrap items-center gap-3">
-            <a 
-              href="https://www.paypal.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2"
-            >
-              <span>🅿️</span> PayPal ($9.99/mo)
-            </a>
-            <a 
-              href="https://www.stripe.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2"
-            >
-              <span>💳</span> Credit Cards ($9.99/mo)
-            </a>
-          </div>
-        </div>
-
-        {/* CRATON CAPABILITIES */}
-        <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-4">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Craton Capabilities & Services (Select a service):</label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button
-              type="button"
-              onClick={() => handleFeatureClick('financial', 'Check current gold price (XAU/USD), market trends, and key economic indicators.')}
-              className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'financial' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
-            >
-              <span className="text-sm font-bold text-white mb-1">📈 Financial Tracker</span>
-              <span className="text-[11px] text-slate-400">Analysis of gold, stocks, crypto, and market indices in real time.</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleFeatureClick('copywriting', 'Write professional high-conversion marketing copy and optimized content for a global audience.')}
-              className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'copywriting' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
-            >
-              <span className="text-sm font-bold text-white mb-1">✍️ Global Copywriting</span>
-              <span className="text-[11px] text-slate-400">Creation of marketing campaigns, posts, emails, and sales copy.</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleFeatureClick('summarizer', 'Extract key points, structured data, and summary for the following text: ')}
-              className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'summarizer' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
-            >
-              <span className="text-sm font-bold text-white mb-1">📄 Smart Summarizer</span>
-              <span className="text-[11px] text-slate-400">Smart analysis, core extraction, and structured overview of long texts.</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleFeatureClick('debugger', 'Analyze the following code or technical error, identify the cause, and propose a solution: ')}
-              className={`p-4 text-xs font-semibold rounded-xl border text-left transition flex flex-col justify-between ${selectedFeature === 'debugger' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
-            >
-              <span className="text-sm font-bold text-white mb-1">💻 Code & Tech Debugger</span>
-              <span className="text-[11px] text-slate-400">Resolving code errors, code optimization, and technical support.</span>
-            </button>
-          </div>
-        </div>
-
-        {/* MAIN FORM */}
-        <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-6">
-          <div className="w-full md:w-1/3">
-            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Select Language</label>
+          {/* Language Selector */}
+          <div style={styles.langSelectorWrapper}>
+            <label style={styles.langLabel}>Language:</label>
             <select 
-              value={language} 
-              onChange={(e) => setLanguage(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 shadow-inner"
+              value={selectedLang} 
+              onChange={(e) => setSelectedLang(e.target.value)}
+              style={styles.select}
             >
-              <option value="en">English (EN)</option>
-              <option value="de">Deutsch (DE)</option>
-              <option value="fr">Français (FR)</option>
-              <option value="zh">中文 (ZH)</option>
-              <option value="es">Español (ES)</option>
-              <option value="ja">日本語 (JA)</option>
-              <option value="hi">हिन्दी (HI)</option>
-              <option value="he">עברית (HE)</option>
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.label}
+                </option>
+              ))}
             </select>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Enter the service or task you require from Craton:</label>
-            <textarea
-              rows="6"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter your request in detail or select one of the features above..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-base text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 resize-y shadow-inner leading-relaxed"
-            />
+        <h1 style={styles.title}>Craton.AI Superagent</h1>
+        <p style={styles.subtitle}>Autonomous Intelligence & Secure PayPal Monetization</p>
+      </header>
+
+      {/* Main Layout Grid (Functions & Billing) */}
+      <div style={styles.mainLayout}>
+        {/* Function Menu Grid */}
+        <div style={styles.functionSection}>
+          <div style={styles.sectionTitle}>Available Core Functions:</div>
+          <div style={styles.functionGrid}>
+            {CRATON_FUNCTIONS.map((func) => (
+              <div 
+                key={func.id} 
+                style={styles.functionCard}
+                onClick={() => handleFunctionClick(func)}
+              >
+                <div style={styles.cardTitle}>{func.title}</div>
+                <div style={styles.cardDesc}>{func.description}</div>
+              </div>
+            ))}
           </div>
+        </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="text-xs text-slate-400">Active Mode: <strong className="text-blue-400 uppercase">{selectedFeature}</strong></span>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-10 py-4 rounded-xl text-sm transition disabled:opacity-50 shadow-xl cursor-pointer"
+        {/* PayPal Billing Box */}
+        <div style={styles.billingCard}>
+          <div style={styles.sectionTitle}>Pro Access ($9.99/mo)</div>
+          <p style={styles.billingDesc}>Pay securely via PayPal to unlock full superagent processing.</p>
+          <div id="paypal-button-container"></div>
+          {paymentStatus && <div style={styles.paymentStatus}>{paymentStatus}</div>}
+        </div>
+      </div>
+
+      {/* Chat Window */}
+      <main style={styles.chatWindow}>
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            style={{
+              ...styles.messageWrapper,
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+            }}
+          >
+            <div
+              style={{
+                ...styles.messageBubble,
+                backgroundColor: msg.role === "user" ? "#2563eb" : "#1e293b",
+                color: "#ffffff",
+              }}
             >
-              {loading ? 'Processing...' : 'Execute Superagent Task'}
-            </button>
-          </div>
-        </form>
-
-        {/* OUTPUT */}
-        {(response || loading) && (
-          <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-              <span className="text-xs font-bold uppercase text-slate-400 tracking-wider">Response Output</span>
-              {usedModel && <span className="text-xs bg-blue-950 text-blue-400 border border-blue-900 px-3 py-1 rounded-md font-mono">Model: {usedModel}</span>}
+              <div style={styles.roleLabel}>
+                {msg.role === "user" ? "You" : "Craton Superagent"}
+              </div>
+              <div style={styles.messageContent}>{msg.content}</div>
             </div>
-            <div className="text-sm md:text-base leading-relaxed whitespace-pre-wrap text-slate-200">
-              {loading ? (
-                <div className="flex items-center gap-3 text-slate-400 py-6">
-                  <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  Craton Engine is processing your request across nodes...
-                </div>
-              ) : (
-                response
-              )}
+          </div>
+        ))}
+
+        {loading && (
+          <div style={{ ...styles.messageWrapper, justifyContent: "flex-start" }}>
+            <div style={{ ...styles.messageBubble, backgroundColor: "#1e293b" }}>
+              <div style={styles.roleLabel}>Craton Engine</div>
+              <div style={styles.loadingText}>Processing intelligence...</div>
             </div>
           </div>
         )}
+        <div ref={chatEndRef} />
+      </main>
 
-      </div>
-
-      <footer className="w-full max-w-7xl mx-auto border-t border-slate-900 mt-12 pt-6 text-center text-xs text-slate-600">
-        Craton.ai Autonomous Environment &copy; 2026
+      {/* Footer / Input */}
+      <footer style={styles.footer}>
+        {usedModel && (
+          <div style={styles.modelStatus}>
+            Active Model: <strong>{usedModel}</strong>
+          </div>
+        )}
+        <form onSubmit={handleSend} style={styles.form}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Select a function above, choose language, or type your prompt..."
+            style={styles.input}
+            disabled={loading}
+          />
+          <button type="submit" disabled={loading} style={styles.button}>
+            {loading ? "Thinking..." : "Execute"}
+          </button>
+        </form>
       </footer>
-    </main>
+    </div>
   );
 }
+
+const styles = {
+  container: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100vh",
+    backgroundColor: "#0f172a",
+    color: "#f8fafc",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+  },
+  header: {
+    padding: "14px 20px",
+    borderBottom: "1px solid #334155",
+    backgroundColor: "#1e293b",
+  },
+  topBar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "6px",
+  },
+  badge: {
+    padding: "4px 10px",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    borderRadius: "12px",
+    fontSize: "11px",
+    fontWeight: "bold",
+  },
+  langSelectorWrapper: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  langLabel: {
+    fontSize: "12px",
+    color: "#94a3b8",
+  },
+  select: {
+    padding: "4px 8px",
+    borderRadius: "6px",
+    border: "1px solid #475569",
+    backgroundColor: "#0f172a",
+    color: "#fff",
+    fontSize: "12px",
+    outline: "none",
+    cursor: "pointer",
+  },
+  title: {
+    margin: "0",
+    fontSize: "20px",
+    fontWeight: "700",
+  },
+  subtitle: {
+    margin: "2px 0 0 0",
+    fontSize: "12px",
+    color: "#94a3b8",
+  },
+  mainLayout: {
+    display: "grid",
+    gridTemplateColumns: "1fr 280px",
+    gap: "12px",
+    padding: "12px 20px",
+    backgroundColor: "#111827",
+    borderBottom: "1px solid #334155",
+  },
+  functionSection: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  sectionTitle: {
+    fontSize: "11px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    color: "#94a3b8",
+    marginBottom: "6px",
+  },
+  functionGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: "6px",
+  },
+  functionCard: {
+    padding: "8px 10px",
+    backgroundColor: "#1e293b",
+    border: "1px solid #334155",
+    borderRadius: "6px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  cardTitle: {
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#38bdf8",
+    marginBottom: "2px",
+  },
+  cardDesc: {
+    fontSize: "10px",
+    color: "#94a3b8",
+    lineHeight: "1.2",
+  },
+  billingCard: {
+    backgroundColor: "#1e293b",
+    border: "1px solid #334155",
+    borderRadius: "6px",
+    padding: "10px 14px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
+  billingDesc: {
+    fontSize: "11px",
+    color: "#94a3b8",
+    margin: "4px 0 8px 0",
+  },
+  paymentStatus: {
+    marginTop: "6px",
+    fontSize: "11px",
+    color: "#34d399",
+  },
+  chatWindow: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "14px",
+  },
+  messageWrapper: {
+    display: "flex",
+    width: "100%",
+  },
+  messageBubble: {
+    maxWidth: "80%",
+    padding: "12px 16px",
+    borderRadius: "10px",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+  },
+  roleLabel: {
+    fontSize: "10px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    color: "#94a3b8",
+    marginBottom: "4px",
+  },
+  messageContent: {
+    fontSize: "14px",
+    lineHeight: "1.5",
+    whiteSpace: "pre-wrap",
+  },
+  loadingText: {
+    fontSize: "13px",
+    color: "#38bdf8",
+    fontStyle: "italic",
+  },
+  footer: {
+    padding: "12px 20px",
+    borderTop: "1px solid #334155",
+    backgroundColor: "#1e293b",
+  },
+  modelStatus: {
+    fontSize: "11px",
+    color: "#64748b",
+    marginBottom: "6px",
+    textAlign: "right",
+  },
+  form: {
+    display: "flex",
+    gap: "10px",
+  },
+  input: {
+    flex: 1,
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "1px solid #475569",
+    backgroundColor: "#0f172a",
+    color: "#fff",
+    fontSize: "14px",
+    outline: "none",
+  },
+  button: {
+    padding: "10px 20px",
+    borderRadius: "8px",
+    border: "none",
+    backgroundColor: "#2563eb",
+    color: "#fff",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+};
