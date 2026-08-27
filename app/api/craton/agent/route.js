@@ -3,36 +3,45 @@ export const fetchCache = 'force-no-store';
 
 import { NextResponse } from 'next/server';
 
-// --- MULTI-LANGUAGE INTERNET SEARCH ENGINE (DuckDuckGo HTML) ---
+// --- ROBUST MULTI-STRATEGY INTERNET SEARCH ---
 async function searchInternet(query) {
   try {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'de,fr,zh,es,ja,hi,he,en;q=0.9'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
       }
     });
 
-    if (!response.ok) return `Internet search unavailable. Relying on internal knowledge base.`;
+    if (!response.ok) return `Internet search feed unavailable.`;
 
     const htmlText = await response.text();
     const snippets = [];
-    const regex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+    
+    // Strategija 1: Ekstrakcija standardnih DuckDuckGo snippet klasa
+    const regexSnippet = /<a[^>]*class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
     let match;
-    let count = 0;
+    while ((match = regexSnippet.exec(htmlText)) !== null && snippets.length < 6) {
+      const clean = match[1].replace(/<[^>]+>/g, '').trim();
+      if (clean && !snippets.includes(clean)) snippets.push(clean);
+    }
 
-    while ((match = regex.exec(htmlText)) !== null && count < 5) {
-      const cleanSnippet = match[1].replace(/<[^>]+>/g, '').trim();
-      if (cleanSnippet) {
-        snippets.push(cleanSnippet);
-        count++;
+    // Strategija 2: Alternativno izvlačenje tekstualnih blokova ako je struktura izmenjena
+    if (snippets.length === 0) {
+      const regexBody = /class="result__body">([\s\S]*?)<\/div>/g;
+      while ((match = regexBody.exec(htmlText)) !== null && snippets.length < 6) {
+        const clean = match[1].replace(/<[^>]+>/g, '').trim();
+        if (clean && !snippets.includes(clean)) snippets.push(clean);
       }
     }
 
-    return snippets.length > 0 ? JSON.stringify(snippets) : 'No direct search results found.';
+    return snippets.length > 0 
+      ? JSON.stringify(snippets) 
+      : 'No direct web snippets captured, proceeding with analytical synthesis.';
   } catch (error) {
-    return `Search system notice: ${error.message}`;
+    return `Search engine warning: ${error.message}`;
   }
 }
 
@@ -75,8 +84,8 @@ export async function POST(request) {
     }
 
     // SYSTEM INSTRUCTION
-    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.6.
-Your operational core supports multi-language processing with strict language auto-matching:
+    const systemInstruction = `You are Craton.ai Autonomous Superagent Engine v4.7.
+Your operational core supports multi-language processing with strict language auto-matching and real-time data synthesis:
 
 TARGET LANGUAGES & BEHAVIOR:
 1. English: Provide clear, authoritative, highly structured, and technical solutions.
@@ -89,13 +98,13 @@ TARGET LANGUAGES & BEHAVIOR:
 8. Hebrew (עברית): Provide direct, concise, well-formatted responses (RTL friendly).
 
 CRITICAL RULE:
-Detect the primary language of the user's input among the target languages listed above or use the explicit language tag provided. You MUST respond ENTIRELY in that same language. Do NOT use Serbian unless explicitly requested. Always format output with clear Markdown structure, bold key details, and tables where applicable.`;
+Detect the primary language of the user's input among the target languages listed above or use the explicit language tag provided. You MUST respond ENTIRELY in that same language. Do NOT use Serbian unless explicitly requested. If real-time web context is provided, integrate it seamlessly into your response with exact data points. Always format output with clear Markdown structure, bold key details, and tables where applicable.`;
 
     const fullPrompt = searchContext 
-      ? `Real-time Web Context: ${searchContext}\n\nUser Request: ${prompt}` 
+      ? `Real-time Web Context Data:\n${searchContext}\n\nUser Request: ${prompt}` 
       : prompt;
 
-    // Ažurirani endpoint-i sa aktuelnim modelima poslednje generacije
+    // Aktuelni stabilni modeli poslednje generacije
     const candidateEndpoints = [
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${cleanKey}`,
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${cleanKey}`
@@ -145,9 +154,9 @@ Detect the primary language of the user's input among the target languages liste
       result: responseText,
       usedModel: usedModel,
       thoughtProcess: searchContext 
-        ? ['Web search executed successfully...', 'Multilingual Gemini Engine processing...'] 
-        : ['Craton Engine v4.6 processing...'],
-      engineVersion: 'v4.6-gemini-multilingual-superagent',
+        ? ['Enhanced web search executed successfully...', 'Multilingual Gemini Engine synthesis...'] 
+        : ['Craton Engine v4.7 processing...'],
+      engineVersion: 'v4.7-gemini-multilingual-superagent',
       supportedLanguages: ['en', 'de', 'fr', 'zh', 'es', 'ja', 'hi', 'he'],
       live: true,
     });
